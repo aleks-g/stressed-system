@@ -1,0 +1,6 @@
+workflow/notebooks/processing_data/*
+workflow/notebooks/sensitivity_analysis/*
+workflow/notebooks/clustering/*
+workflow/notebooks/__pycache__/
+workflow/notebooks/plots/*
+workflow/notebooks/paper_plots/*
