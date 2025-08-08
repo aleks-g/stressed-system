@@ -1,6 +1,6 @@
 # Preparing for the worst: Long-term and short-term weather extremes in resource adequacy assessment
 
-Code for preprint "Preparing for the worst: Long-term and short-term weather extremes in resource adequacy assessment". Additional data accompanying the paper can be found at the Zenodo repository [10.5281/zenodo.16753688](doi.org/10.5281/zenodo.16753688).
+Code for preprint "Preparing for the worst: Long-term and short-term weather extremes in resource adequacy assessment" ([arXiv:2508.05163](https://arxiv.org/abs/2508.05163)). Additional data accompanying the paper can be found at the Zenodo repository [10.5281/zenodo.16753688](doi.org/10.5281/zenodo.16753688).
 
 Abstract:
 > Security of supply is a common and important concern when integrating renewables in net-zero power systems.
