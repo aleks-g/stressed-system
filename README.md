@@ -13,7 +13,7 @@ Our methodology and implementation in the open model PyPSA-Eur can be re-applied
 
 ## Overview
 
-This repository contains the code necessary to reproduce the results and plots. A fork of PyPSA-Eur which was used to run the optimisations is attached as a submodule. The network files as well as various data files (processing data, sensitivity analysis) are stored in the Zenodo repository [10.5281/zenodo.16753688](doi.org/10.5281/zenodo.16753688). Detailed descriptions can be found in the Zenodo readme.
+This repository contains the code necessary to reproduce the results and plots. A fork of PyPSA-Eur which was used to run the optimisations is attached as a submodule. The network files as well as various data files (processing data, sensitivity analysis) are stored in the Zenodo repository [10.5281/zenodo.16753688](https://doi.org/10.5281/zenodo.16753688). Detailed descriptions can be found in the Zenodo readme.
 
 The results are analysed in the Jupyter notebooks `workflow/notebooks/paper_plots.ipynb` and `workflow/notebooks/supplementary_material.ipynb`; they utilise data from the Zenodo repository. These data were generated with the scripts in `workflow/notebooks/`.
 
