@@ -194,63 +194,220 @@ def compute_anomalies_periods(
         anom_df[i] = gen_anom
     return anom_df
 
-def cost_acc_netw(
-            n: pypsa.Network,
-            start: str, 
-            end: str,
-            ):
-    """Compute the cost accounting for a given network `n` over the period from `start` to `end`.
+# def cost_acc_netw(n, start, end, value_type="absolute"):
+#     """Compute the cost accounting for a given network `n` over the period from `start` to `end`."""
+#     vals = {}
+#     price_nodes = n.buses.loc[n.buses.carrier == "AC"].index
+
+#     wind_generators = n.generators.loc[n.generators.carrier.str.contains("wind")].index
+#     solar_generators = n.generators.loc[n.generators.carrier.str.contains("solar")].index
+#     ror_generators = n.generators.loc[n.generators.carrier == "ror"].index
+#     renewable_generators = n.generators.loc[n.generators.cadonrrier.isin(['solar-hsat', 'onwind', 'offwind-float', 'solar', 'offwind-ac', 'offwind-dc', 'ror'])].index
+#     gas_generators = n.generators.loc[n.generators.carrier.isin(["CCGT", "OCGT"])].index
+
+#     fc_i = n.links.loc[n.links.carrier == "H2 fuel cell"].index
+#     elec_i = n.links.loc[n.links.carrier == "H2 electrolysis"].index
+#     batt_charger_i = n.links.loc[n.links.carrier == "battery charger"].index
+#     batt_discharger_i = n.links.loc[n.links.carrier == "battery discharger"].index
+
+#     links_i = n.links.loc[n.links.carrier == "DC"].index
+
+#     ## COST ACCUMULATION
+
+#     vals["lines"] = (((- n.lines_t.mu_upper + n.lines_t.mu_lower)*(n.lines.s_nom_opt)).loc[start:end].sum(axis=0).sum()/((- n.lines_t.mu_upper + n.lines_t.mu_lower)*(n.lines.s_nom_opt)).sum(axis=0).sum()).round(3)
+#     vals["links"] = ((- n.links_t.mu_upper + n.links_t.mu_lower) * n.links.p_nom_opt).loc[start:end, links_i].sum().sum() / ((- n.links_t.mu_upper + n.links_t.mu_lower) * n.links.p_nom_opt).loc[:, links_i].sum().sum()
+
+#     vals["costs"] = (n.buses_t.marginal_price[price_nodes] * n.loads_t.p_set).loc[start:end].sum().sum()/(n.buses_t.marginal_price[price_nodes] * n.loads_t.p_set).sum().sum()
+
+#     for generators, col in zip([wind_generators, solar_generators, ror_generators, renewable_generators], ["wind", "solar", "ror", "renew"]):
+#         if len(generators) > 0:
+#             gen = n.generators_t.p[generators]
+#             gen.columns = generators.map(n.generators.bus)
+#             vals[col] = (gen * n.buses_t.marginal_price[price_nodes]).loc[start:end].sum().sum()/(gen * n.buses_t.marginal_price[price_nodes]).sum().sum()
+#         else:
+#             vals[col] = 0.0
+
+#     if len(gas_generators) > 0:
+#         gen = n.generators_t.p[gas_generators]
+#         gen.columns = gas_generators.map(n.generators.bus)
+#         gen = gen.T.groupby(level=0).sum().T
+#         vals["gas"] = (gen * n.buses_t.marginal_price[price_nodes]).loc[start:end].sum().sum()/(gen * n.buses_t.marginal_price[price_nodes]).sum().sum()
+#     else:
+#         vals["gas"] = 0.0
+
+#     for storage, col in zip([fc_i, elec_i, batt_charger_i, batt_discharger_i], ["fc", "elec", "batt_charger", "batt_discharger"]):
+#         if len(storage) > 0:
+#             vals[col] = (-n.links_t.p1[storage] * n.buses_t.marginal_price[price_nodes].values).loc[start:end].sum().sum()/(-n.links_t.p1[storage] * n.buses_t.marginal_price[price_nodes].values).sum().sum()
+#         else:
+#             vals[col] = 0.0
+    
+#     if value_type == "relative":
+#     return vals
+
+def cost_acc_netw(n, start, end, value_type="absolute"):
+    """
+    Compute the cost accounting for a given network `n` over the period from `start` to `end`.
+    
     Parameters:
     -----------
-    n: PyPSA network
+    n : pypsa.Network
         The network for which the cost accounting is performed.
-    start: str
+    start : str
         The start date of the period.
-    end: str
+    end : str
         The end date of the period.
+    value_type : str, default="absolute"
+        Type of value to return:
+        - "absolute": Revenue during period (EUR)
+        - "relative": Cost recovery ratio (revenue / capital_cost)
     
     Returns:
     --------
     dict
-        A dictionary with the cost accounting values for different components of the network.
+        A dictionary with the cost accounting values for different components.
     """
-
     vals = {}
     price_nodes = n.buses.loc[n.buses.carrier == "AC"].index
 
+    # Define generator groups
     wind_generators = n.generators.loc[n.generators.carrier.str.contains("wind")].index
     solar_generators = n.generators.loc[n.generators.carrier.str.contains("solar")].index
     ror_generators = n.generators.loc[n.generators.carrier == "ror"].index
-    renewable_generators = n.generators.loc[n.generators.carrier.isin(['solar-hsat', 'onwind', 'offwind-float',
-       'solar', 'offwind-ac', 'offwind-dc', 'ror'])].index
+    renewable_generators = n.generators.loc[n.generators.carrier.isin([
+        'solar-hsat', 'onwind', 'offwind-float', 'solar', 'offwind-ac', 'offwind-dc', 'ror'
+    ])].index
+    gas_generators = n.generators.loc[n.generators.carrier.isin(["CCGT", "OCGT"])].index
 
+    # Define link groups
     fc_i = n.links.loc[n.links.carrier == "H2 fuel cell"].index
-    batt_i = n.links.loc[n.links.carrier == "battery charger"].index
-
+    elec_i = n.links.loc[n.links.carrier == "H2 electrolysis"].index
+    batt_charger_i = n.links.loc[n.links.carrier == "battery charger"].index
+    batt_discharger_i = n.links.loc[n.links.carrier == "battery discharger"].index
     links_i = n.links.loc[n.links.carrier == "DC"].index
 
-    # Congestion rent lines
-    vals["lines"] = (((- n.lines_t.mu_upper + n.lines_t.mu_lower)*(n.lines.s_nom_opt)).loc[start:end].sum(axis=0).sum()/((- n.lines_t.mu_upper + n.lines_t.mu_lower)*(n.lines.s_nom_opt)).sum(axis=0).sum()).round(3)
-    # Congestion rent links
-    vals["links"] = ((- n.links_t.mu_upper + n.links_t.mu_lower) * n.links.p_nom_opt).loc[start:end, links_i].sum().sum() / ((- n.links_t.mu_upper + n.links_t.mu_lower) * n.links.p_nom_opt).loc[:, links_i].sum().sum()
+    ## CONGESTION RENTS AND COSTS
 
-    # Costs 
-    vals["costs"] = (n.buses_t.marginal_price[price_nodes] * n.loads_t.p_set).loc[start:end].sum().sum()/(n.buses_t.marginal_price[price_nodes] * n.loads_t.p_set).sum().sum()
+    # Lines
+    line_revenue = ((- n.lines_t.mu_upper + n.lines_t.mu_lower) * n.lines.s_nom_opt).loc[start:end].sum(axis=0).sum()
+    if value_type == "absolute":
+        vals["lines"] = line_revenue
+    else:  # relative
+        line_capex = (n.lines.s_nom_opt * n.lines.capital_cost).sum()
+        vals["lines"] = line_revenue / line_capex if line_capex > 0 else 0.0
 
-    # Renewables
-    for generators, col in zip([wind_generators, solar_generators, ror_generators, renewable_generators], ["wind", "solar", "ror", "renew"]):
-        gen = n.generators_t.p[generators]
-        gen.columns = generators.map(n.generators.bus)
-        vals[col] = (gen * n.buses_t.marginal_price[price_nodes]).loc[start:end].sum().sum()/(gen * n.buses_t.marginal_price[price_nodes]).sum().sum()
-    
-    # Storage
-    for storage, col in zip([fc_i, batt_i], ["fc", "batt"]):
-       vals[col] = (-n.links_t.p1[storage] * n.buses_t.marginal_price[price_nodes].values).loc[start:end].sum().sum()/(-n.links_t.p1[storage] * n.buses_t.marginal_price[price_nodes].values).sum().sum()  
+    # DC Links
+    link_revenue = ((- n.links_t.mu_upper + n.links_t.mu_lower) * n.links.p_nom_opt).loc[start:end, links_i].sum().sum()
+    if value_type == "absolute":
+        vals["links"] = link_revenue
+    else:  # relative
+        link_capex = (n.links.loc[links_i, "p_nom_opt"] * n.links.loc[links_i, "capital_cost"]).sum()
+        vals["links"] = link_revenue / link_capex if link_capex > 0 else 0.0
+
+    # Load costs
+    costs_period = (n.buses_t.marginal_price[price_nodes] * n.loads_t.p_set).loc[start:end].sum().sum()
+    if value_type == "absolute":
+        vals["costs"] = costs_period
+    else:  # relative
+        costs_total = (n.buses_t.marginal_price[price_nodes] * n.loads_t.p_set).sum().sum()
+        vals["costs"] = costs_period / costs_total
+
+    ## GENERATORS
+
+    for generators, col in zip(
+        [wind_generators, solar_generators, ror_generators, renewable_generators, gas_generators],
+        ["wind", "solar", "ror", "renew", "gas"]
+    ):
+        if len(generators) > 0:
+            gen = n.generators_t.p[generators].copy()
+            gen.columns = generators.map(n.generators.bus)
+            gen = gen.T.groupby(level=0).sum().T
+
+            revenue = (gen * n.buses_t.marginal_price[price_nodes]).loc[start:end].sum().sum()
+
+            if value_type == "absolute":
+                vals[col] = revenue
+            else:  # relative
+                capex = (n.generators.loc[generators, "p_nom_opt"] *
+                        n.generators.loc[generators, "capital_cost"]).sum()
+                vals[col] = revenue / capex if capex > 0 else 0.0
+        else:
+            vals[col] = 0.0
+
+    ## STORAGE COMPONENTS
+
+    for storage, col in zip(
+        [fc_i, elec_i, batt_charger_i, batt_discharger_i],
+        ["fc", "elec", "batt_charger", "batt_discharger"]
+    ):
+        if len(storage) > 0:
+            revenue = (-n.links_t.p1[storage] * n.buses_t.marginal_price[price_nodes].values).loc[start:end].sum().sum()
+
+            if value_type == "absolute":
+                vals[col] = revenue
+            else:  # relative
+                capex = (n.links.loc[storage, "p_nom_opt"] *
+                        n.links.loc[storage, "capital_cost"]).sum()
+                vals[col] = revenue / capex if capex > 0 else 0.0
+        else:
+            vals[col] = 0.0
+
     return vals
 
 
 
-def cost_acc(opt_networks, years = None, periods = None):
+# def cost_acc(opt_networks, years=None, periods=None, period_type="winter", value_type="absolute"):
+#     """
+#     Compute the cost accounting for the optimal networks over the given years or periods.
+
+#     Parameters:
+#     -----------
+#     opt_networks: dict
+#         Dictionary of PyPSA networks indexed by year.
+#     years: list, optional
+#         List of years for which the cost accounting is performed. If None, periods must be provided.
+#     periods: pd.DataFrame, optional
+#         DataFrame with the periods for which the cost accounting is performed. If None, years must be provided.
+#     period_type: str, optional
+#         Type of period to analyze: "winter" (Oct-Mar) or "annual" (full year). Default is "winter".
+#         Only used when years is provided.
+#     value_type: str, optional
+#         Type of values to return: "absolute" (full values) or "relative" (percentages). Default is "absolute".
+    
+#     Returns:
+#     --------
+#     pd.DataFrame
+#         DataFrame with the cost accounting values for different components of the networks, indexed by year or period.
+#     """
+#     cols = ["costs", "renew", "fc", "batt", "links", "lines", "wind", "solar", "ror"]
+
+#     if years is None and periods is None:
+#         raise ValueError("Either years or periods must be provided.")
+#     elif years is not None:
+#         df = pd.DataFrame(index=years, columns=cols).astype(float)
+#         for year, n in opt_networks.items():
+#             if period_type == "winter":
+#                 start = f"{year}-10-01"
+#                 end = f"{year+1}-03-31"
+#             elif period_type == "annual":
+#                 start = f"{year}-07-01"
+#                 end = f"{year}-06-30"
+#             else:
+#                 raise ValueError("period_type must be 'winter' or 'annual'")
+#             df.loc[year] = cost_acc_netw(n, start, end)
+#     else:
+#         df = pd.DataFrame(index=periods.index, columns=cols).astype(float)
+#         for i, period in periods.iterrows():
+#             n = opt_networks[get_net_year(period.start)]
+#             df.loc[i] = cost_acc_netw(n, period.start, period.end)
+
+#     if value_type == "relative":
+#         df = df.div(df["costs"], axis=0) * 100
+#     elif value_type != "absolute":
+#         raise ValueError("value_type must be 'absolute' or 'relative'")
+
+#     return df
+
+def cost_acc(opt_networks, years=None, periods=None, period_type="winter", value_type="absolute"):
     """
     Compute the cost accounting for the optimal networks over the given years or periods.
 
@@ -262,27 +419,46 @@ def cost_acc(opt_networks, years = None, periods = None):
         List of years for which the cost accounting is performed. If None, periods must be provided.
     periods: pd.DataFrame, optional
         DataFrame with the periods for which the cost accounting is performed. If None, years must be provided.
+    period_type: str, optional
+        Type of period to analyze: "winter" (Oct-Mar) or "annual" (full year). Default is "winter".
+        Only used when years is provided.
+    value_type: str, optional
+        Type of values to return:
+        - "absolute": Revenue during period (EUR)
+        - "relative": Cost recovery ratio (revenue / capital_cost)
+        Default is "absolute".
     
     Returns:
     --------
     pd.DataFrame
         DataFrame with the cost accounting values for different components of the networks, indexed by year or period.
-
     """
-    cols = ["costs", "renew", "fc", "batt", "links", "lines", "wind", "solar", "ror"]
+    # Updated columns to match cost_acc_netw output
+    cols = ["lines", "links", "costs", "wind", "solar", "ror", "renew", "gas",
+            "fc", "elec", "batt_charger", "batt_discharger"]
 
     if years is None and periods is None:
         raise ValueError("Either years or periods must be provided.")
     elif years is not None:
-        df = pd.DataFrame(index = years, columns = cols).astype(float)
+        df = pd.DataFrame(index=years, columns=cols).astype(float)
         for year, n in opt_networks.items():
-            df.loc[year] = cost_acc_netw(n, f"{year}-10-01", f"{year+1}-03-31")
+            if period_type == "winter":
+                start = f"{year}-10-01"
+                end = f"{year+1}-03-31"
+            elif period_type == "annual":
+                start = f"{year}-07-01"
+                end = f"{year+1}-06-30"
+            else:
+                raise ValueError("period_type must be 'winter' or 'annual'")
+            df.loc[year] = cost_acc_netw(n, start, end, value_type=value_type)
     else:
-        df = pd.DataFrame(index = periods.index, columns = cols).astype(float)
+        df = pd.DataFrame(index=periods.index, columns=cols).astype(float)
         for i, period in periods.iterrows():
             n = opt_networks[get_net_year(period.start)]
-            df.loc[i] = cost_acc_netw(n, period.start, period.end)
+            df.loc[i] = cost_acc_netw(n, period.start, period.end, value_type=value_type)
+
     return df
+
 
 
 # Get network for a given date. Here, opt_networks[n] is defined over the period n-07-01 to (n+1)-06-30.
@@ -965,9 +1141,50 @@ def nodal_flexibility(
 # NOTE: For ror, we only have limited availability in the different time steps, so the flexibility availability in capacities can be slightly misleading.
 
 
-
-
 ## PLOTTING
+
+def clean_incidence_matrix(
+        periods: pd.DataFrame, 
+        sens_periods: dict, 
+        scenario_list: list,
+        ):
+    """Create a cleaned incidence matrix for the sensitivity periods.
+
+    Parameters:
+    -----------
+    periods: pd.DataFrame
+        DataFrame with the periods.
+    sens_periods: dict
+        Dictionary with the sensitivity periods, where keys are scenario names and values scenario names.
+    scenario_list: list
+        List of scenarios to consider in the incidence matrix.
+
+    Returns:
+    --------
+    np.ndarray
+        Incidence matrix where rows correspond to scenarios and columns to periods.
+    """
+    matrix = np.zeros((len(scenario_list), len(periods)))
+    for costs in reversed(sens_periods.keys()):
+        for i, scenar in enumerate(scenario_list):
+            if scenar == (90, 'c1.25', 'Co2L0.0'):
+                matrix[i,:] = 4
+            else:
+                alt_periods = sens_periods[costs][scenar]
+                if len(alt_periods) == 0:
+                    matrix[i,:] = 0
+                else:
+                    for j, ind in enumerate(periods.index):
+                        period = periods.loc[ind]
+                        start = period.start.tz_localize(tz="UTC")
+                        end = period.end.tz_localize(tz="UTC")
+                        time_slice = pd.date_range(start, end, freq="h")
+                        for k,alt_period in alt_periods.iterrows():
+                            alt_time_slice = pd.date_range(alt_period.start, alt_period.end, freq="h")
+                            if len(set(time_slice).intersection(set(alt_time_slice))) > 0:
+                                matrix[i,j] +=1
+                                break
+    return matrix
 
 
 def plot_affected_areas(
@@ -1541,6 +1758,161 @@ def plot_cluster_anomalies(
                 plt.savefig(f"{path_str}_cluster_{cluster}.pdf", bbox_inches="tight")
         else:
             plt.show()
+
+def plot_dispatch_stack(gen_stacks, net_load, periods, event_nr, tech=["biomass", "nuclear", "H2 fuel cell", "battery discharger", "PHS", "hydro", "battery charger", "H2 electrolysis"], tech_colours=["#baa741", "#ff8c00", "#c251ae", "#ace37f", "#51dbcc", "#298c81", "#ace37f", "#c251ae"], resampled="1H", ax=None):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6 * cm, 4 * cm))
+    start = periods.loc[event_nr, "start"]
+    end = periods.loc[event_nr, "end"]
+    start_full = pd.Timestamp(start.date())
+    end_full = pd.Timestamp(end.date()) + pd.Timedelta(hours=23)
+    p = gen_stacks.loc[start_full:end_full, tech].astype(float).resample(resampled).mean() / 1e3
+    p_neg = p.clip(upper=0)
+    p_pos = p.clip(lower=0)
+    ax.stackplot(p_pos.index, p_pos.T, colors=tech_colours, labels=p_pos.columns)
+    ax.stackplot(p_neg.index, p_neg.T, colors=tech_colours)
+    net_load_filtered = net_load.loc[start_full:end_full, "Net load"].resample(resampled).mean() / 1e3
+    ax.plot(net_load_filtered.index, net_load_filtered, color="black", lw=1, ls="--", label="Net load")
+    return ax
+
+def plot_cluster_dispatch(
+      gen_stacks: pd.DataFrame,
+      net_load: pd.DataFrame,
+      periods: pd.DataFrame,
+      cluster_nr: int,
+      clustered_vals: pd.DataFrame,
+      tech: list = [
+          "biomass",
+          "nuclear",
+          "H2 fuel cell",
+          "battery discharger",
+          "PHS",
+          "hydro",
+          "battery charger",
+          "H2 electrolysis",
+      ],
+      tech_colours: list = [
+          "#baa741",
+          "#ff8c00",
+          "#c251ae",
+          "#ace37f",
+          "#51dbcc",
+          "#298c81",
+          "#ace37f",
+          "#c251ae",
+      ],
+      resampled: str = "1H",
+      save_fig: bool = False,
+      path_str: str = None,
+      cluster_names: list = None,
+  ):
+      """Plot the dispatch stacks for different clusters.
+
+      Parameters:
+      -----------
+      gen_stacks: pd.DataFrame
+          Generation stacks per technology.
+      net_load: pd.DataFrame
+          Net load time series.
+      periods: pd.DataFrame
+          System-defining events.
+      cluster_nr: int
+          Number of clusters.
+      clustered_vals: pd.DataFrame
+          Clustered values with stats for each SDE.
+      tech: list
+          List of technologies.
+      tech_colours: list
+          List of colours for the technologies.
+      resampled: str
+          Resampling frequency.
+      save_fig: bool
+          If True, save the figure.
+      path_str: str
+          Path to save the figure.
+      cluster_names: list
+          List of cluster names.
+      """
+      for cluster in range(cluster_nr):
+          nb_plots = len(clustered_vals.loc[clustered_vals["cluster"] == cluster])
+          nb_rows = nb_plots // 4 if nb_plots % 4 == 0 else nb_plots // 4 + 1
+
+          fig, axs = plt.subplots(
+              nb_rows,
+              4,
+              figsize=(30 * cm, nb_rows * 7 * cm),
+              sharey=True,
+              gridspec_kw={"hspace": 0.6, "wspace": 0.1},
+          )
+
+          if len(cluster_names) == cluster_nr:
+              fig.suptitle(f"{cluster_names[cluster]}", fontsize=12)
+          else:
+              fig.suptitle(f"Cluster {cluster}", fontsize=12)
+
+          for i, event_nr in enumerate(
+              clustered_vals[clustered_vals["cluster"] == cluster].index
+          ):
+              ax = axs.flatten()[i]
+
+              # Use the plot_dispatch_stack function
+              if 'plot_dispatch_stack' in globals():
+                  plot_dispatch_stack(
+                      gen_stacks, net_load, periods, event_nr,
+                      tech=tech, tech_colours=tech_colours,
+                      resampled=resampled, ax=ax
+                  )
+              else:
+                  raise NameError("The function 'plot_dispatch_stack' is not defined.")
+
+              # Styling
+              ax.set_title(f"Event {event_nr}", fontsize=8)
+              ax.set_ylabel("Power [GW]", fontsize=8)
+
+              start = periods.loc[event_nr, "start"]
+              end = periods.loc[event_nr, "end"]
+              ax.set_xlabel(f"{start.date()} - {end.date()}", fontsize=7)
+
+              # Set x-ticks
+              ax.xaxis.set_major_locator(mdates.DayLocator())
+              ax.xaxis.set_major_formatter(mdates.DateFormatter("%d/%m"))
+              ax.tick_params(axis="x", labelsize=7, rotation=90, length=0)
+              ax.tick_params(axis="y", labelsize=7, length=0)
+
+              # Grids
+              ax.yaxis.grid(True, which="major", linestyle=":", linewidth=0.5, alpha=0.5)
+              ax.xaxis.grid(True, which="major", linestyle=":", linewidth=0.5, alpha=0.5)
+
+          # Add legend - centered below plots with 8 columns
+          handles, labels = axs.flatten()[0].get_legend_handles_labels()
+          selected_handles = [handles[5], handles[4], handles[3], handles[2],
+                              handles[1], handles[0], handles[7], handles[-1]]
+          pretty_labels = ["Hydro", "PHS", "Battery", "Fuel cell",
+                           "Nuclear", "Biomass", "Electrolysis", "Net load"]
+
+          # Position legend in center of the figure, below all plots
+          fig.legend(
+              handles=selected_handles,
+              labels=pretty_labels,
+              loc="lower center",
+              bbox_to_anchor=(0.5, -0.02),
+              frameon=False,
+              ncol=8,  
+              fontsize=7
+          )
+               
+          # Hide empty plots
+          for ax in axs.flatten()[nb_plots:]:
+              ax.axis("off")
+
+          if save_fig:
+              if path_str is None:
+                  print("Please specify a path to save the figure.")
+              else:
+                  plt.savefig(f"{path_str}dispatch_cluster_{cluster}.pdf", bbox_inches="tight")
+          else:
+              plt.show()
+
 
 
 def plot_duals(

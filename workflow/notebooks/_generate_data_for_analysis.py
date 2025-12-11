@@ -645,6 +645,7 @@ def gather_flex(
     firm_flex_df = (firm_flex_df/1e3).round(1)
     return firm_flex_df
 
+
 def gen_shares(
         n: pypsa.Network, 
         start: str = None, 
@@ -1156,6 +1157,7 @@ def wind_dist(
 
 if __name__ == "__main__":
     # Standard set-up, note the faulty CO2 limit naming (as no CO2-emitting technologies were included)
+    # for sensitivity runs need to run "stressful-weather-sensitivities" and "base_s_90_elec_lc1.0_Co2L0.0" (with correct naming)
     config_name = "stressful-weather"
     config_str = "base_s_90_elec_lc1.25_Co2L"
 
@@ -1233,10 +1235,14 @@ if __name__ == "__main__":
     all_prices.round(0).to_csv(f"{folder}/all_prices.csv")
 
     # ACCUMULATION OF COSTS DURING PERIOD AND WINTER
-    periods_cost = cost_acc(opt_networks, periods=periods)
-    winter_costs = cost_acc(opt_networks, years=years)
+    periods_cost = cost_acc(opt_networks, periods=periods, value_type="relative")
+    winter_costs = cost_acc(opt_networks, years=years, period_type="winter", value_type="relative")
+    annual_costs = cost_acc(opt_networks, years=years, period_type="annual", value_type="absolute")
+    annual_costs_relative = cost_acc(opt_networks, years=years, period_type="annual", value_type="relative")
     periods_cost.to_csv(f"{folder}/periods_cost.csv")
     winter_costs.to_csv(f"{folder}/winter_costs.csv")
+    annual_costs.to_csv(f"{folder}/annual_costs.csv")
+    annual_costs_relative.to_csv(f"{folder}/annual_costs_relative.csv")
 
     # Costs, storage costs and fuel cell costs
     total_costs, total_storage_costs, total_fc_costs = compute_all_duals(opt_networks)
@@ -1416,7 +1422,6 @@ if __name__ == "__main__":
     peak_hour_gen_df = peak_hour_gen(opt_networks, periods, net_load)
     peak_hour_gen_df.round(1).to_csv(f"{folder}/peak_gen.csv")
 
-
     ## FLEXIBILITY INDICATORS
     ### SYSTEM
     # Detailed system flexibility
@@ -1554,6 +1559,4 @@ if __name__ == "__main__":
     periods_shares.to_csv(f"{folder}/generation_periods_shares.csv")
     annual_gen_shares.to_csv(f"{folder}/generation_annual_shares.csv")
     nov_feb_shares.to_csv(f"{folder}/generation_nov_feb_shares.csv")
-
-    
 
