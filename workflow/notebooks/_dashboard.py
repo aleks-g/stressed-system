@@ -651,6 +651,278 @@ def plot_dashboard(
             f"./plots/{config_name}/dashboard/event_{event_nr}.pdf", bbox_inches="tight"
         )
 
+def plot_dashboard_simplified(
+    config_name: str,
+    event_nr: int,
+    stats_periods: pd.DataFrame,
+    annual_values: pd.DataFrame,
+    kpis: List[str],
+    kpi_names: List[str],
+    hulls_coll: Dict[str, List[ConvexHull]],
+    hulls_markers_names: List[str],
+    fc_flex: pd.DataFrame,
+    onshore_regions: gpd.GeoDataFrame,
+    n: pypsa.Network,
+    projection: ccrs.Projection,
+    gen_stacks: pd.DataFrame,
+    time_window: pd.Timedelta,
+    total_load: pd.DataFrame,
+    freq: str,
+    save: bool = False,
+) -> plt.Figure:
+    """
+    Plot a dashboard with KPIs, map, annual stats, and generation stack plot.
+
+    Parameters:
+    -----------
+    config_name: str
+        Name of the configuration
+    event_nr: int
+        Event number to display
+    stats_periods: pd.DataFrame
+        Statistics of all periods
+    annual_values: pd.DataFrame
+        Annual values data
+    kpis: List[str]
+        Key performance indicators to display
+    kpi_names: List[str]
+        Names of the KPIs for display
+    hulls_coll: Dict[str, List[ConvexHull]]
+        Hull data for different technologies
+    hulls_markers_names: List[str]
+        Names of the hull markers
+    fc_flex: pd.DataFrame
+        Fuel cell flexibility data
+    onshore_regions: gpd.GeoDataFrame
+        Onshore regions data
+    n: pypsa.Network
+        PyPSA network object
+    projection: ccrs.Projection
+        Map projection
+    gen_stacks: pd.DataFrame
+        Generation stack data
+    time_window: pd.Timedelta
+        Time window for the generation stack plot
+    total_load: pd.DataFrame
+        Total load data
+    freq: str
+        Frequency for resampling the data
+    save: bool, default False
+        Whether to save the plot
+
+    Returns:
+    --------
+    plt.Figure
+        The dashboard figure
+    """
+    fig, axd = plt.subplot_mosaic(
+        mosaic=[["kpi", "map"], ["gen", "gen"]],
+        width_ratios=[1, 1.25],
+        height_ratios=[1, 1],
+        gridspec_kw={"hspace": 0.5},
+        per_subplot_kw={
+            "map": {"projection": projection},
+        },
+        figsize=(18 * cm, 14 * cm),
+    )
+
+    period = stats_periods.loc[event_nr]
+
+    ### PLOT KPIs
+    ax = axd["kpi"]
+    # Generate subaxes for the stripplots of each KPI.
+    sub_axes = []
+    n_kpis = len(kpis)
+    main_box = ax.get_position()
+    sub_ax_height = main_box.height / n_kpis
+
+    # Create horizontal subplots
+    for (i, kpi), name in zip(enumerate(kpis), kpi_names):
+        bottom = main_box.y0 + i * sub_ax_height
+        height = sub_ax_height
+        sub_ax = fig.add_axes([main_box.x0, bottom, main_box.width, sub_ax_height])
+        sub_axes.append(sub_ax)
+
+        # First make stripplot of all SDEs
+        sns.stripplot(
+            data=stats_periods,  # Adjust duration as needed
+            x=kpi,
+            ax=sub_ax,
+            jitter=0.1,
+            alpha=0.2,
+            size=3,
+            color="grey",
+            legend=False,
+        )
+
+        # Annotate the min and max value with their value
+        minval, maxval = stats_periods[kpi].min(), stats_periods[kpi].max()
+        for val, text in zip([minval, maxval], ["min", "max"]):
+            if kpi in ["wind_anom", "avg_rel_load", "normed_price_std"]:
+                sub_ax.text(
+                    val,
+                    -0.15,
+                    f"{val:.2f}",
+                    ha="center",
+                    va="bottom",
+                    fontsize=7,
+                    color="grey",
+                )
+            else:
+                sub_ax.text(
+                    val,
+                    -0.15,
+                    f"{val:.0f}",
+                    ha="center",
+                    va="bottom",
+                    fontsize=7,
+                    color="grey",
+                )
+
+        # Plot all other values that are inside the cluster
+        sns.stripplot(
+            data=stats_periods[stats_periods.cluster == period.cluster],
+            x=kpi,
+            ax=sub_ax,
+            jitter=0.1,
+            alpha=0.4,
+            size=3,
+            marker="D",
+            color="blue",
+            legend=False,
+        )
+
+        # Plot the actual value
+        sns.stripplot(
+            data=stats_periods[stats_periods.index == period.name],
+            x=kpi,
+            ax=sub_ax,
+            jitter=0,
+            alpha=0.8,
+            size=3,
+            marker="D",
+            color="red",
+            legend=False,
+        )
+        # Annotate value of selected period.
+        if kpi in ["wind_anom", "avg_rel_load", "normed_price_std"]:
+            sub_ax.text(
+                period[kpi],
+                0.5,
+                f"{period[kpi]:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=7,
+                color="red",
+            )
+        else:
+            sub_ax.text(
+                period[kpi],
+                0.5,
+                f"{period[kpi]:.0f}",
+                ha="center",
+                va="bottom",
+                fontsize=7,
+                color="red",
+            )
+
+        # Add the kpi as yticklabel and no x and y labels.
+        sub_ax.text(
+            0.5,
+            sub_ax_height + 0.6,
+            name,
+            ha="center",
+            va="bottom",
+            fontsize=7,
+            color="black",
+            transform=sub_ax.transAxes,
+        )
+        sub_ax.set_xticklabels([])
+        sub_ax.set_ylabel("")
+        sub_ax.set_xlabel("")
+        sub_ax.tick_params(length=0, axis="both")
+
+        # Remove border around axes.
+        sub_ax.axis("off")
+    sub_axes[0].legend(
+        ["All system-defining events", "SDEs in the same cluster", "Systerm-defining events"],
+        loc="upper left",
+        bbox_to_anchor=(0.15, 0),
+        fontsize=7,
+        ncols=1,
+    )
+    axd["kpi"].set_visible(False)
+    #fig.text(0.14, 0.895, "Metrics compared to other SDEs", fontsize=8)
+    
+
+    ### MAP
+    ax = axd["map"]
+    legend_elements = plot_affected_areas(
+        config_name,
+        period,
+        event_nr,
+        [hulls_coll[tech][event_nr] for tech in hulls_coll.keys()],
+        list(hulls_coll.keys()),
+        hulls_markers_names,
+        ["#235ebc", "#dd2e23", "green", "#c251ae"],
+        fc_flex,
+        "fuel_cells",
+        mpl.colors.Normalize(vmin=0, vmax=1),
+        "Purples",
+        onshore_regions,
+        n,
+        projection,
+        ax=ax,
+    )
+    ax.legend(
+        handles=legend_elements, bbox_to_anchor=(0.5, 0), loc="upper center", fontsize=7
+    )
+
+
+    ## GENERATION STACK PLOT
+    ax = axd["gen"]
+    plot_gen_stack(
+        gen_stacks,
+        total_load,
+        pd.Timestamp(stats_periods.loc[event_nr, "start"]) - time_window,
+        pd.Timestamp(stats_periods.loc[event_nr, "end"]) + time_window,
+        stats_periods,
+        freq=freq,
+        ax=ax,
+    )
+    ax.hlines(y=0, xmin=gen_stacks.index[0], xmax=gen_stacks.index[-1], color="black", lw=0.5)
+    sns.despine(ax=ax, left=True, bottom=True)
+    ax.tick_params(labelsize=7, length=0, which="both", axis="both")
+    ax.set_title("Dispatch stack [GW]", fontsize=8)
+    ax.set_ylabel("")
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))
+    ax.xaxis.set_minor_locator(mdates.DayLocator(interval=1))
+    ax.yaxis.set_major_locator(MultipleLocator(200))
+    ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+
+    ax.grid(axis="x", which="both", color="grey", linestyle=":", linewidth=0.5)
+    ax.grid(axis="y", which="major", color="grey", linestyle="--", linewidth=0.5)
+    ax.grid(axis="y", which="minor", color="grey", linestyle=":", linewidth=0.5)
+
+    handles, labels = ax.get_legend_handles_labels()
+    pretty_labels = ["Biomass", "Nuclear", "Run-of-river", "Battery discharge", "Battery charge", "Hydro", "PHS", "Fuel cells", "Electrolysis", "Solar", "Offshore wind", "Onshore wind", "SDE", "Load"]
+    
+
+    ax.legend(labels=pretty_labels, handles = handles, bbox_to_anchor=(0.95, -0.18), fontsize=7, ncols=5)
+
+    # Add labels to plots.
+    for numb, coord in zip(["(a)", "(b)", "(c)",], [(0.09, 0.895), (0.59, 0.895), (0.09, 0.435)]):
+        fig.text(
+            coord[0],
+            coord[1],
+            numb,
+            fontsize=8,
+        )
+
+    if save:
+        plt.savefig(
+            f"./plots/{config_name}/dashboard/event_{event_nr}_simplified.pdf", bbox_inches="tight"
+        )
 
 def plot_gen_stack(
     gen_df: pd.DataFrame,
@@ -791,6 +1063,25 @@ if __name__ == "__main__":
 
     # Plot dashboard.
     for event_nr in periods.index:
+        plot_dashboard_simplified(
+            config_name = "stressful-weather",
+            event_nr = event_nr,
+            stats_periods = stats_periods,
+            annual_values = annual_values,
+            kpis = ["highest_net_load", "avg_net_load", "wind_anom", "avg_rel_load", "max_fc_discharge", "duration", "normed_price_std"],
+            kpi_names = ["Peak net load [GW]","Avg. net load [GW]","Wind CF anomaly","Avg. rel. load","Fuel cell disp. [GW]","Duration [h]","Price imbalance"],
+            hulls_coll=hulls_coll,
+            hulls_markers_names=hulls_markers_names,
+            fc_flex=fc_flex,
+            onshore_regions=onshore_regions,
+            n = n,
+            projection = projection,
+            gen_stacks = gen_stacks,
+            time_window = pd.Timedelta("7d"),
+            total_load = total_load,
+            freq = "3H",
+            save = True
+        )
         plot_dashboard(
             config_name="stressful-weather",
             event_nr=event_nr,
