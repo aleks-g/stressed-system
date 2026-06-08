@@ -7,15 +7,15 @@ Abstract:
 Extreme weather affects both demand and supply leading to power system stress; in Europe this stress spreads continentally beyond the meteorological root cause.
 We use an approach based on shadow prices to identify periods of elevated stress called system-defining events and analyse their impact on the power system.
 By classifying different types of system-defining events, we identify challenges to power system operation and planning.
-Crucially, we find the need for sufficient resilience back-up (power) capacities whose financial viability is precarious due to weather variability.
-Furthermore, we disentangle short- and long-term resilience challenges with distinct metrics and stress tests to incorporate both into future energy modelling assessments.
-Our methodology and implementation in the open model PyPSA-Eur can be re-applied to other systems and help researchers and policymakers in building more resilient and adequate energy systems.
+Crucially, we find the need for sufficient resilience back-up (power) capacities whose financial viability is precarious due to weather variability and weather-induced risk. 
+Furthermore, we disentangle short- and long-term resilience challenges (from multi-day to annual scale) with distinct metrics and stress tests to incorporate both into future energy modelling assessments.
+Our methodology and implementation in an open energy system model (PyPSA-Eur) can be re-applied to other systems and help researchers and policymakers in building more resilient and adequate energy systems.
 
 ## Overview
 
 This repository contains the code necessary to reproduce the results and plots. A fork of PyPSA-Eur which was used to run the optimisations is attached as a submodule. The network files as well as various data files (processing data, sensitivity analysis) are stored in the Zenodo repository [10.5281/zenodo.20590389](https://doi.org/10.5281/zenodo.20590389). Detailed descriptions can be found in the Zenodo readme.
 
-The results are analysed in the Jupyter notebooks `workflow/notebooks/paper_plots.ipynb` and `workflow/notebooks/supplementary_material.ipynb`; they utilise data from the Zenodo repository. These data were generated with the scripts in `workflow/notebooks/`.
+The results are analysed in the Jupyter notebooks `workflow/notebooks/final_plots.ipynb` and `workflow/notebooks/final_supplementary_material.ipynb`; they utilise data from the Zenodo repository. These data were generated with the scripts in `workflow/notebooks/`.
 
 
 ### Installation and set-up
