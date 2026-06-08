@@ -1,6 +1,6 @@
-# Preparing for the worst: Long-term and short-term weather extremes in resource adequacy assessment
+# Resilience metrics to guide back-up investments in the power system during extreme weather
 
-Code for preprint "Preparing for the worst: Long-term and short-term weather extremes in resource adequacy assessment" ([arXiv:2508.05163](https://arxiv.org/abs/2508.05163)). Additional data accompanying the paper can be found at the Zenodo repository [10.5281/zenodo.16753688](https://doi.org/10.5281/zenodo.16753688).
+Code for preprint "Resilience metrics to guide back-up investments in the power system during extreme weather" ([arXiv:2508.05163](https://arxiv.org/abs/2508.05163)). Additional data accompanying the paper can be found at the Zenodo repository [10.5281/zenodo.20590389](https://doi.org/10.5281/zenodo.20590389).
 
 Abstract:
 > Security of supply is a common and important concern when integrating renewables in net-zero power systems.
@@ -13,7 +13,7 @@ Our methodology and implementation in the open model PyPSA-Eur can be re-applied
 
 ## Overview
 
-This repository contains the code necessary to reproduce the results and plots. A fork of PyPSA-Eur which was used to run the optimisations is attached as a submodule. The network files as well as various data files (processing data, sensitivity analysis) are stored in the Zenodo repository [10.5281/zenodo.16753688](https://doi.org/10.5281/zenodo.16753688). Detailed descriptions can be found in the Zenodo readme.
+This repository contains the code necessary to reproduce the results and plots. A fork of PyPSA-Eur which was used to run the optimisations is attached as a submodule. The network files as well as various data files (processing data, sensitivity analysis) are stored in the Zenodo repository [10.5281/zenodo.20590389](https://doi.org/10.5281/zenodo.20590389). Detailed descriptions can be found in the Zenodo readme.
 
 The results are analysed in the Jupyter notebooks `workflow/notebooks/paper_plots.ipynb` and `workflow/notebooks/supplementary_material.ipynb`; they utilise data from the Zenodo repository. These data were generated with the scripts in `workflow/notebooks/`.
 
