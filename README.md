@@ -1,6 +1,6 @@
 # Resilience metrics to guide back-up investments in the power system during extreme weather
 
-Code for preprint "Resilience metrics to guide back-up investments in the power system during extreme weather" ([arXiv:2508.05163](https://arxiv.org/abs/2508.05163)). Additional data accompanying the paper can be found at the Zenodo repository [10.5281/zenodo.20590389](https://doi.org/10.5281/zenodo.20590389).
+Code for article "Resilience metrics to guide back-up investments in the power system during extreme weather" ([published in Nature Sustainability](https://doi.org/10.1038/s41893-026-01897-6) and also accessible at [arXiv:2508.05163](https://arxiv.org/abs/2508.05163)). Additional data accompanying the paper can be found at the Zenodo repository [10.5281/zenodo.20590389](https://doi.org/10.5281/zenodo.20590389).
 
 Abstract:
 > Security of supply is a common and important concern when integrating renewables in net-zero power systems.
